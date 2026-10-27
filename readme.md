@@ -29,7 +29,7 @@
 
 ## Зависимости
 
-- Paper/Spigot 1.21+
+- Paper/Spigot (100% works on 26.2)
 - [GriefPrevention](https://github.com/GriefPrevention/GriefPrevention)
 
 ## Установка
