@@ -29,7 +29,7 @@
 
 ## Зависимости
 
-- Paper/Spigot (100% works on 26.2)
+- Paper/Spigot (100% работает 26.2)
 - [GriefPrevention](https://github.com/GriefPrevention/GriefPrevention)
 
 ## Установка
@@ -49,3 +49,6 @@
 
 `plugins/GPTrustGroups/groups.yml` — приватные группы по владельцам, `public` — системная.
 `plugins/GPTrustGroups/messages.yml` — тексты сообщений.
+
+
+## Сгенерировано ИИ, хотя и с оговорками на мой пристальный контроль и постоянные исправления. README тоже составлен с помощью ИИ
