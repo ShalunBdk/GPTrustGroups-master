@@ -28,7 +28,8 @@ import me.ryanhamshire.GriefPrevention.TextMode;
 
 public class TrustCommandInterceptor implements Listener {
 
-    private final GPTrustGroups plugin;
+    @SuppressWarnings("unused")
+	private final GPTrustGroups plugin;
     private final GroupManager groupManager;
     private final Messages messages;
 

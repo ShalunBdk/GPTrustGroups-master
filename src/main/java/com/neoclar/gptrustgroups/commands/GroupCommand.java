@@ -316,7 +316,8 @@ public class GroupCommand implements CommandExecutor, TabCompleter {
     private UUID resolvePlayer(String name) {
         Player online = Bukkit.getPlayerExact(name);
         if (online != null) return online.getUniqueId();
-        OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
+        @SuppressWarnings("deprecation")
+		OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
         return offline.hasPlayedBefore() ? offline.getUniqueId() : null;
     }
 
