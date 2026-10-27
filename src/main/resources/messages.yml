@@ -1,0 +1,117 @@
+# ===== Общие =====
+General.NoClaim: "You must be inside a claim."
+General.GroupNotFound: "Group #{0} not found."
+General.PlayerNotFound: "No player by that name has logged in recently."
+General.NotOwner: "Only the group owner can do that."
+
+# ===== /trustgroups create =====
+Create.Usage: "Usage: /trustgroups create <name>"
+Create.Success: "Group #{0} created."
+Create.InvalidName: "Invalid name. Use 2-32 chars: a-z, 0-9, _, -"
+Create.NameTaken: "Group #{0} already exists."
+Create.ReservedName: "That name is reserved."
+
+# ===== /trustgroups delete =====
+Delete.Usage: "Usage: /trustgroups delete <name>"
+Delete.Success: "Group #{0} deleted."
+Delete.PublicForbidden: "The system group #public cannot be deleted."
+
+# ===== /trustgroups add =====
+Add.Usage: "Usage: /trustgroups add <name> <player|#group>"
+Add.Player.Success: "Player {0} added to #{1}."
+Add.Player.Already: "Player {0} is already in #{1}."
+Add.Player.ExcludedWarning: "Note: {0} is on this group's exclusion list — they won't gain access until removed."
+Add.Group.Success: "Group #{0} nested into #{1}."
+Add.Group.Already: "Group #{0} is already nested in #{1}."
+Add.Group.Cycle: "Cannot nest: this would create a cycle."
+Add.Group.TooDeep: "Nesting depth limit reached."
+
+# ===== /trustgroups remove =====
+Remove.Usage: "Usage: /trustgroups remove <name> <player|#group>"
+Remove.Player.Success: "Player {0} removed from #{1}."
+Remove.Player.NotPresent: "Player {0} is not directly in #{1} (try /trustgroups exclude)."
+Remove.Group.Success: "Group #{0} unnested from #{1}."
+Remove.Group.NotPresent: "Group #{0} was not nested in #{1}."
+
+# ===== /trustgroups exclude =====
+Exclude.Usage: "Usage: /trustgroups exclude <name> <player|#group>"
+Exclude.Player.Success: "Player {0} excluded from #{1}."
+Exclude.Player.WasMember: "Player {0} was a direct member of #{1} and has been removed instead."
+Exclude.Player.Already: "Player {0} is already excluded from #{1}."
+Exclude.Player.Owner: "Cannot exclude the group owner."
+Exclude.Group.Success: "Group #{0} excluded from #{1}."
+Exclude.Group.NotExists: "Group #{0} does not exist."
+Exclude.Group.SameGroup: "Cannot exclude a group from itself."
+Exclude.Group.Already: "Group #{0} is already excluded from #{1}."
+
+# ===== /trustgroups unexclude =====
+Unexclude.Usage: "Usage: /trustgroups unexclude <name> <player|#group>"
+Unexclude.Player.Success: "Player {0} unexcluded from #{1}."
+Unexclude.Player.NotExcluded: "Player {0} was not excluded from #{1}."
+Unexclude.Group.Success: "Group #{0} unexcluded from #{1}."
+Unexclude.Group.NotExcluded: "Group #{0} was not excluded from #{1}."
+
+# ===== /trustgroups list =====
+List.Usage: "Usage: /trustgroups list <name>"
+List.Header: "Group #{0}:"
+List.System: "System group — includes all players."
+List.Owner: "Owner: {0}"
+List.Members: "Members: {0}"
+List.Nested: "Nested groups: {0}"
+List.ExcludedPlayers: "Excluded players: {0}"
+List.ExcludedGroups: "Excluded groups: {0}"
+List.Empty: "(none)"
+
+# ===== /trustgroups info =====
+Info.Usage: "Usage: /trustgroups info <name>"
+Info.Header: "Group #{0}"
+Info.System: "System group — includes all players."
+Info.Owner: "Owner: {0}"
+Info.Members: "Members: {0}"
+Info.Nested: "Nested: {0}"
+Info.ExcludedPlayers: "Excluded players: {0}"
+Info.ExcludedGroups: "Excluded groups: {0}"
+Info.YouIn: "You are in this group: {0}"
+Info.Yes: "yes"
+Info.No: "no"
+
+# ===== /trustgroups my =====
+My.Empty: "You have no groups. Create one: /trustgroups create <name>"
+My.Header: "Your groups:"
+My.Entry: "{0} — members: {1}, nested: {2}"
+
+# ===== /trustgroups help =====
+Help.Header: "GPTrustGroups:"
+Help.Create: "create <name> — create a group"
+Help.Delete: "delete <name> — delete your group"
+Help.Add: "add <name> <player|#group> — add player or nest group"
+Help.Remove: "remove <name> <player|#group> — remove player or unnest"
+Help.Exclude: "exclude <name> <player|#group> — exclude"
+Help.Unexclude: "unexclude <name> <player|#group> — remove exclusion"
+Help.List: "list <name> — group contents"
+Help.Info: "info <name> — group details"
+Help.My: "my — your groups"
+Help.Note: "System group #public includes all players."
+
+# ===== /trust /untrust #group =====
+Trust.NoClaim: "You must be inside a claim."
+Trust.GroupNotFound: "Group #{0} not found."
+Trust.GroupGranted: "Group #{0} now has {1} trust here."
+Trust.GroupRevoked: "Group #{0} no longer has trust here."
+Trust.AlreadyHad: "Group #{0} already had that trust here."
+Trust.NotHad: "Group #{0} didn't have trust here."
+Trust.Level.Build: "build"
+Trust.Level.Containers: "containers"
+Trust.Level.Access: "access"
+Trust.Level.Manage: "manage"
+
+# ===== /trustlist =====
+TrustList.NoClaim: "Stand inside the claim you're curious about."
+TrustList.Header: "Explicit permissions here:"
+TrustList.Public: "the public"
+TrustList.UnknownPlayer: "someone"
+TrustList.SubclaimRestriction: "This subclaim does not inherit permissions from the parent"
+TrustList.Manage: "Manage"
+TrustList.Build: "Build"
+TrustList.Containers: "Containers"
+TrustList.Access: "Access"

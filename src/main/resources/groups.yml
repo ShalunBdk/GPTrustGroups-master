@@ -1,0 +1,12 @@
+# Каждый владелец — отдельное пространство имён групп.
+# Публичная группа хранится под UUID 00000000-0000-0000-0000-000000000000.
+# Пример:
+# groups:
+#   "owner-uuid":
+#     white:
+#       id: "..."
+#       members: ["uuid1"]
+#       nested-groups: ["public"]
+#       excluded-players: ["uuid2"]
+#       excluded-groups: []
+groups: {}
