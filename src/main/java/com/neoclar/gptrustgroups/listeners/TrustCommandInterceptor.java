@@ -35,7 +35,7 @@ public class TrustCommandInterceptor implements Listener {
     private final GroupManager groupManager;
     private final Messages messages;
 
-    private record TrustCommand(Set<String> names, ClaimPermission permission, String levelKey) {}
+    record TrustCommand(Set<String> names, ClaimPermission permission, String levelKey) {}
     // Имена и алиасы — как в plugin.yml GriefPrevention
     private static final List<TrustCommand> COMMANDS = List.of(
             new TrustCommand(Set.of("trust", "tr"), ClaimPermission.Build, "Build"),
@@ -73,8 +73,8 @@ public class TrustCommandInterceptor implements Listener {
         if (parts.length < 2) return;
         String arg = parts[1];
 
-        boolean isUntrust = UNTRUST_NAMES.contains(cmd);
-        TrustCommand tc = COMMANDS.stream().filter(c -> c.names().contains(cmd)).findFirst().orElse(null);
+        boolean isUntrust = isUntrust(cmd);
+        TrustCommand tc = findTrustCommand(cmd);
         if (!isUntrust && tc == null) return;
         if (!arg.startsWith("#")) return;
 
@@ -143,9 +143,18 @@ public class TrustCommandInterceptor implements Listener {
     }
 
     /** "/GriefPrevention:Trust" → "trust" */
-    private static String normalizeCommand(String raw) {
+    static String normalizeCommand(String raw) {
         String cmd = raw.toLowerCase();
         return cmd.startsWith(GP_PREFIX) ? cmd.substring(GP_PREFIX.length()) : cmd;
+    }
+
+    /** Команда выдачи доверия по нормализованному имени или алиасу; null — не она. */
+    static TrustCommand findTrustCommand(String cmd) {
+        return COMMANDS.stream().filter(c -> c.names().contains(cmd)).findFirst().orElse(null);
+    }
+
+    static boolean isUntrust(String cmd) {
+        return UNTRUST_NAMES.contains(cmd);
     }
 
     // ---------- /trustlist ----------
@@ -252,7 +261,7 @@ public void onTabComplete(TabCompleteEvent event) {
     String[] parts = withoutSlash.split(" ", 2);
     String cmd = normalizeCommand(parts[0]);
 
-    boolean isTrustCmd = UNTRUST_NAMES.contains(cmd) || COMMANDS.stream().anyMatch(c -> c.names().contains(cmd));
+    boolean isTrustCmd = isUntrust(cmd) || findTrustCommand(cmd) != null;
     if (!isTrustCmd) return;
 
     // Дополняем только первый аргумент: "/trust " или "/trust #gr"

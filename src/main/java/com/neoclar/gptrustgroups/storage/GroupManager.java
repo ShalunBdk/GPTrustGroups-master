@@ -3,13 +3,13 @@ package com.neoclar.gptrustgroups.storage;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import com.neoclar.gptrustgroups.util.GroupIdMapper;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class GroupManager {
 
@@ -24,16 +24,17 @@ public class GroupManager {
 
     public enum AccessResult { ALLOWED, DENIED, NONE }
 
-    private final JavaPlugin plugin;
+    private final Logger logger;
     private final File groupsFile;
     private FileConfiguration config;
 
     private final Map<UUID, Map<String, Group>> groupsByOwner = new HashMap<>();
     private final Map<UUID, Group> groupsById = new HashMap<>();
 
-    public GroupManager(JavaPlugin plugin) {
-        this.plugin = plugin;
-        this.groupsFile = new File(plugin.getDataFolder(), "groups.yml");
+    /** groupsFile может не существовать — тогда старт с пустым набором групп. */
+    public GroupManager(File groupsFile, Logger logger) {
+        this.logger = logger;
+        this.groupsFile = groupsFile;
         load();
         ensurePublicGroup();
     }
@@ -41,7 +42,6 @@ public class GroupManager {
     // ---------- I/O ----------
 
     public void load() {
-        if (!groupsFile.exists()) plugin.saveResource("groups.yml", false);
         this.config = YamlConfiguration.loadConfiguration(groupsFile);
         groupsByOwner.clear();
         groupsById.clear();
@@ -49,7 +49,7 @@ public class GroupManager {
 
         ConfigurationSection section = config.getConfigurationSection("groups");
         if (section == null) {
-            plugin.getLogger().info("No groups found.");
+            logger.info("No groups found.");
             return;
         }
 
@@ -60,7 +60,7 @@ public class GroupManager {
             UUID owner;
             try { owner = UUID.fromString(ownerKey); }
             catch (IllegalArgumentException e) {
-                plugin.getLogger().warning("Invalid owner UUID: " + ownerKey + " — skipping namespace.");
+                logger.warning("Invalid owner UUID: " + ownerKey + " — skipping namespace.");
                 continue;
             }
 
@@ -76,7 +76,7 @@ public class GroupManager {
                 UUID id = parseUuid(gs.getString("id"));
                 if (PUBLIC_NAME.equalsIgnoreCase(name) && !PUBLIC_OWNER.equals(owner)) {
                     // Иначе такая группа получила бы PUBLIC_ID и подменила системную #public
-                    plugin.getLogger().warning("Group 'public' of " + ownerKey + " uses a reserved name — skipping.");
+                    logger.warning("Group 'public' of " + ownerKey + " uses a reserved name — skipping.");
                     continue;
                 }
                 if (PUBLIC_NAME.equalsIgnoreCase(name)) {
@@ -106,7 +106,7 @@ public class GroupManager {
         }
 
         if (needsSave) save();
-        plugin.getLogger().info("Loaded " + count + " group(s) for " + groupsByOwner.size() + " owner(s).");
+        logger.info("Loaded " + count + " group(s) for " + groupsByOwner.size() + " owner(s).");
     }
 
     public void save() {
@@ -125,7 +125,7 @@ public class GroupManager {
         try {
             config.save(groupsFile);
         } catch (IOException e) {
-            plugin.getLogger().severe("Failed to save groups.yml: " + e.getMessage());
+            logger.severe("Failed to save groups.yml: " + e.getMessage());
         }
     }
 
@@ -339,7 +339,7 @@ public class GroupManager {
             groupsById.put(pub.getId(), pub);
             GroupIdMapper.register(pub);
             save();
-            plugin.getLogger().info("Created system group #public.");
+            logger.info("Created system group #public.");
         } else {
             GroupIdMapper.register(existing);
         }

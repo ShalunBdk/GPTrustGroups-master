@@ -64,7 +64,11 @@ public class ClaimPermissionListener implements Listener {
         ArrayList<String> accessors = new ArrayList<>();
         ArrayList<String> managers = new ArrayList<>();
         claim.getPermissions(builders, containers, accessors, managers);
+        return entriesGranting(required, builders, containers, accessors, managers);
+    }
 
+    static List<String> entriesGranting(ClaimPermission required, List<String> builders, List<String> containers,
+                                        List<String> accessors, List<String> managers) {
         List<String> result = new ArrayList<>();
         switch (required) {
             case Access -> {

@@ -8,6 +8,8 @@ import com.neoclar.gptrustgroups.storage.Messages;
 
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.io.File;
+
 public class GPTrustGroups extends JavaPlugin {
 
     private GroupManager groupManager;
@@ -23,7 +25,9 @@ private Messages messages;
             getLogger().severe("Не удалось создать папку плагина.");
             return;
         }
-        this.groupManager = new GroupManager(this);
+        File groupsFile = new File(getDataFolder(), "groups.yml");
+        if (!groupsFile.exists()) saveResource("groups.yml", false);
+        this.groupManager = new GroupManager(groupsFile, getLogger());
         GroupCommand cmd = new GroupCommand(this);
         var tg = getCommand("trustgroups");
         if (tg != null) {
