@@ -3,6 +3,7 @@ package com.neoclar.gptrustgroups.listeners;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -25,6 +26,7 @@ import me.ryanhamshire.GriefPrevention.Claim;
 import me.ryanhamshire.GriefPrevention.ClaimPermission;
 import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.TextMode;
+import me.ryanhamshire.GriefPrevention.events.TrustChangedEvent;
 
 public class TrustCommandInterceptor implements Listener {
 
@@ -33,13 +35,17 @@ public class TrustCommandInterceptor implements Listener {
     private final GroupManager groupManager;
     private final Messages messages;
 
-    private record TrustCommand(String name, ClaimPermission permission, String levelKey) {}
+    private record TrustCommand(Set<String> names, ClaimPermission permission, String levelKey) {}
+    // Имена и алиасы — как в plugin.yml GriefPrevention
     private static final List<TrustCommand> COMMANDS = List.of(
-            new TrustCommand("trust", ClaimPermission.Build, "Build"),
-            new TrustCommand("containertrust", ClaimPermission.Inventory, "Containers"),
-            new TrustCommand("accesstrust", ClaimPermission.Access, "Access"),
-            new TrustCommand("permissiontrust", ClaimPermission.Manage, "Manage")
+            new TrustCommand(Set.of("trust", "tr"), ClaimPermission.Build, "Build"),
+            new TrustCommand(Set.of("containertrust", "ct"), ClaimPermission.Inventory, "Containers"),
+            new TrustCommand(Set.of("accesstrust", "at"), ClaimPermission.Access, "Access"),
+            new TrustCommand(Set.of("permissiontrust", "pt", "managetrust"), ClaimPermission.Manage, "Manage")
     );
+    private static final Set<String> UNTRUST_NAMES = Set.of("untrust", "ut");
+    private static final String GP_PREFIX = "griefprevention:";
+    private static final String CLAIMS_PERMISSION = "griefprevention.claims";
 
     public TrustCommandInterceptor(GPTrustGroups plugin) {
         this.plugin = plugin;
@@ -55,9 +61,10 @@ public class TrustCommandInterceptor implements Listener {
         String[] parts = message.substring(1).split("\\s+", 3);
         if (parts.length < 1) return;
 
-        String cmd = parts[0].toLowerCase();
+        String cmd = normalizeCommand(parts[0]);
 
-        if (cmd.equals("trustlist") || cmd.equals("trustlistall")) {
+        if (cmd.equals("trustlist")) {
+            if (!event.getPlayer().hasPermission(CLAIMS_PERMISSION)) return; // пусть GP сам ответит отказом
             event.setCancelled(true);
             showTrustList(event.getPlayer());
             return;
@@ -66,12 +73,14 @@ public class TrustCommandInterceptor implements Listener {
         if (parts.length < 2) return;
         String arg = parts[1];
 
-        boolean isUntrust = cmd.equals("untrust");
-        if (!isUntrust && COMMANDS.stream().noneMatch(c -> c.name().equals(cmd))) return;
+        boolean isUntrust = UNTRUST_NAMES.contains(cmd);
+        TrustCommand tc = COMMANDS.stream().filter(c -> c.names().contains(cmd)).findFirst().orElse(null);
+        if (!isUntrust && tc == null) return;
         if (!arg.startsWith("#")) return;
 
-        event.setCancelled(true);
         Player player = event.getPlayer();
+        if (!player.hasPermission(CLAIMS_PERMISSION)) return; // пусть GP сам ответит отказом
+        event.setCancelled(true);
 
         String groupName = arg.substring(1).toLowerCase();
         Group group = groupManager.get(player.getUniqueId(), groupName);
@@ -80,36 +89,63 @@ public class TrustCommandInterceptor implements Listener {
             return;
         }
 
-        Claim claim = GriefPrevention.instance.dataStore.getClaimAt(player.getLocation(), false, null);
+        Claim claim = GriefPrevention.instance.dataStore.getClaimAt(player.getLocation(), true, null);
         if (claim == null) {
             send(player, TextMode.Err, messages.get("Trust.NoClaim"));
+            return;
+        }
+
+        // Те же проверки, что делает GP в /trust и /untrust: менять доверие может только владелец или менеджер
+        if (claim.checkPermission(player, ClaimPermission.Manage, null) != null) {
+            GriefPrevention.sendMessage(player, TextMode.Err,
+                    me.ryanhamshire.GriefPrevention.Messages.NoPermissionTrust, claim.getOwnerName());
             return;
         }
 
         String groupId = group.getId().toString();
 
         if (isUntrust) {
-            boolean removed = false;
-            for (TrustCommand tc : COMMANDS) {
-                if (removePermission(claim, groupId, tc.permission())) removed = true;
+            boolean hadAny = getList(claim, 0).contains(groupId) || getList(claim, 1).contains(groupId)
+                    || getList(claim, 2).contains(groupId) || getList(claim, 3).contains(groupId);
+            if (!hadAny) {
+                send(player, TextMode.Warn, messages.format("Trust.NotHad", groupName));
+                return;
             }
-            if (removed) {
-                GriefPrevention.instance.dataStore.saveClaim(claim);
-                send(player, TextMode.Success, messages.format("Trust.GroupRevoked", groupName));
-            } else {
-                send(player, TextMode.Warn, messages.format("Trust.GroupNotHad", groupName));
+            // Снять менеджера может только владелец
+            if (getList(claim, 3).contains(groupId) && claim.checkPermission(player, ClaimPermission.Edit, null) != null) {
+                GriefPrevention.sendMessage(player, TextMode.Err,
+                        me.ryanhamshire.GriefPrevention.Messages.ManagersDontUntrustManagers, claim.getOwnerName());
+                return;
             }
+            TrustChangedEvent trustEvent = new TrustChangedEvent(player, claim, null, false, groupId);
+            Bukkit.getPluginManager().callEvent(trustEvent);
+            if (trustEvent.isCancelled()) return;
+
+            for (Claim c : trustEvent.getClaims()) {
+                c.dropPermission(groupId);
+                GriefPrevention.instance.dataStore.saveClaim(c);
+            }
+            send(player, TextMode.Success, messages.format("Trust.GroupRevoked", groupName));
             return;
         }
 
-        TrustCommand tc = COMMANDS.stream().filter(c -> c.name().equals(cmd)).findFirst().orElse(null);
-        if (tc == null) return;
+        TrustChangedEvent trustEvent = new TrustChangedEvent(player, claim, tc.permission(), true, groupId);
+        Bukkit.getPluginManager().callEvent(trustEvent);
+        if (trustEvent.isCancelled()) return;
 
-        claim.setPermission(groupId, tc.permission());
-        GriefPrevention.instance.dataStore.saveClaim(claim);
+        for (Claim c : trustEvent.getClaims()) {
+            c.setPermission(groupId, tc.permission());
+            GriefPrevention.instance.dataStore.saveClaim(c);
+        }
 
         send(player, TextMode.Success,
                 messages.format("Trust.GroupGranted", groupName, messages.get("Trust.Level." + tc.levelKey)));
+    }
+
+    /** "/GriefPrevention:Trust" → "trust" */
+    private static String normalizeCommand(String raw) {
+        String cmd = raw.toLowerCase();
+        return cmd.startsWith(GP_PREFIX) ? cmd.substring(GP_PREFIX.length()) : cmd;
     }
 
     // ---------- /trustlist ----------
@@ -213,26 +249,27 @@ public void onTabComplete(TabCompleteEvent event) {
     if (!buffer.startsWith("/")) return;
 
     String withoutSlash = buffer.substring(1);
-    String[] parts = withoutSlash.split("\\s+", 2);
-    String cmd = parts[0].toLowerCase();
+    String[] parts = withoutSlash.split(" ", 2);
+    String cmd = normalizeCommand(parts[0]);
 
-    boolean isTrustCmd = cmd.equals("trust") || cmd.equals("containertrust")
-            || cmd.equals("accesstrust") || cmd.equals("permissiontrust")
-            || cmd.equals("untrust");
+    boolean isTrustCmd = UNTRUST_NAMES.contains(cmd) || COMMANDS.stream().anyMatch(c -> c.names().contains(cmd));
     if (!isTrustCmd) return;
 
-    if (parts.length == 1 || parts[1].isEmpty() || parts[1].startsWith("#")) {
-        String prefix = parts.length == 1 ? "" : parts[1];
+    // Дополняем только первый аргумент: "/trust " или "/trust #gr"
+    if (parts.length == 2 && !parts[1].contains(" ") && (parts[1].isEmpty() || parts[1].startsWith("#"))) {
+        String prefix = parts[1].toLowerCase();
 
         List<String> groups = new ArrayList<>();
         groupManager.getAllFor(player.getUniqueId()).forEach(g -> groups.add("#" + g.getName()));
         groups.add("#" + GroupManager.PUBLIC_NAME);
 
-        List<String> filtered = groups.stream()
-                .filter(s -> s.toLowerCase().startsWith(prefix.toLowerCase()))
+        // getCompletions() может быть неизменяемым списком — собираем новый
+        List<String> completions = new ArrayList<>(event.getCompletions());
+        groups.stream()
+                .filter(s -> s.toLowerCase().startsWith(prefix))
                 .sorted()
-                .toList();
-        event.getCompletions().addAll(filtered);
+                .forEach(completions::add);
+        event.setCompletions(completions);
     }
 }
 
@@ -241,19 +278,6 @@ public void onTabComplete(TabCompleteEvent event) {
 private void send(Player player, ChatColor color, String message) {
     player.sendMessage(color + message);
 }
-
-    private boolean removePermission(Claim claim, String id, ClaimPermission level) {
-        List<String> targetList = switch (level) {
-            case Build -> getList(claim, 0);
-            case Inventory -> getList(claim, 1);
-            case Access -> getList(claim, 2);
-            case Manage -> getList(claim, 3);
-            default -> null;
-        };
-        if (targetList == null || !targetList.contains(id)) return false;
-        claim.setPermission(id, null);
-        return true;
-    }
 
     private List<String> getList(Claim claim, int index) {
         var b = new ArrayList<String>();

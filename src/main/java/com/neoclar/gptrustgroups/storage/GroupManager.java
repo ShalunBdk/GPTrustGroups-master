@@ -74,6 +74,11 @@ public class GroupManager {
                 if (gs == null) continue;
 
                 UUID id = parseUuid(gs.getString("id"));
+                if (PUBLIC_NAME.equalsIgnoreCase(name) && !PUBLIC_OWNER.equals(owner)) {
+                    // Иначе такая группа получила бы PUBLIC_ID и подменила системную #public
+                    plugin.getLogger().warning("Group 'public' of " + ownerKey + " uses a reserved name — skipping.");
+                    continue;
+                }
                 if (PUBLIC_NAME.equalsIgnoreCase(name)) {
                     if (!PUBLIC_ID.equals(id)) { id = PUBLIC_ID; needsSave = true; }
                 } else if (id == null) {
@@ -144,13 +149,23 @@ public class GroupManager {
 
     // ---------- CRUD ----------
 
-    public Group create(String name, UUID owner) {
+    public enum CreateResult { OK, INVALID_NAME, RESERVED_NAME, NAME_TAKEN }
+
+    /** Почему нельзя создать группу с таким именем (или OK). */
+    public CreateResult checkCreate(String name, UUID owner) {
         String key = name.toLowerCase();
-        if (!key.matches(NAME_REGEX)) return null;
-        if (RESERVED_NAMES.contains(key)) return null;
+        if (!key.matches(NAME_REGEX)) return CreateResult.INVALID_NAME;
+        if (RESERVED_NAMES.contains(key)) return CreateResult.RESERVED_NAME;
+        Map<String, Group> ns = groupsByOwner.get(owner);
+        if (ns != null && ns.containsKey(key)) return CreateResult.NAME_TAKEN;
+        return CreateResult.OK;
+    }
+
+    public Group create(String name, UUID owner) {
+        if (checkCreate(name, owner) != CreateResult.OK) return null;
+        String key = name.toLowerCase();
 
         Map<String, Group> ns = groupsByOwner.computeIfAbsent(owner, k -> new HashMap<>());
-        if (ns.containsKey(key)) return null;
 
         Group g = new Group(UUID.randomUUID(), name, owner);
         ns.put(key, g);
@@ -263,6 +278,13 @@ public class GroupManager {
         path.add(group.getId());
         boolean hasAllowed = false, hasDenied = false;
         try {
+            // Участники исключённой группы не получают доступ (если не добавлены сюда напрямую)
+            for (String excludedName : group.getExcludedGroups()) {
+                Group excluded = resolveNested(group, excludedName);
+                if (excluded == null) continue;
+                if (checkAccess(excluded, player, path) == AccessResult.ALLOWED) return AccessResult.DENIED;
+            }
+
             for (String nestedName : group.getNestedGroups()) {
                 Group nested = resolveNested(group, nestedName);
                 if (nested == null) continue;

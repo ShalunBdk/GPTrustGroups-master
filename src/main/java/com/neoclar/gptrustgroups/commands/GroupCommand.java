@@ -4,6 +4,7 @@ import com.neoclar.gptrustgroups.GPTrustGroups;
 import com.neoclar.gptrustgroups.storage.Group;
 import com.neoclar.gptrustgroups.storage.GroupManager;
 import com.neoclar.gptrustgroups.storage.Messages;
+import me.ryanhamshire.GriefPrevention.GriefPrevention;
 import me.ryanhamshire.GriefPrevention.TextMode;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -61,6 +62,12 @@ public class GroupCommand implements CommandExecutor, TabCompleter {
 
     private void cmdCreate(Player player, String[] args) {
         if (args.length < 2) { send(player, TextMode.Err, messages.get("Create.Usage")); return; }
+        switch (manager.checkCreate(args[1], player.getUniqueId())) {
+            case INVALID_NAME -> { send(player, TextMode.Err, messages.get("Create.InvalidName")); return; }
+            case RESERVED_NAME -> { send(player, TextMode.Err, messages.get("Create.ReservedName")); return; }
+            case NAME_TAKEN -> { send(player, TextMode.Err, messages.format("Create.NameTaken", args[1].toLowerCase())); return; }
+            case OK -> { }
+        }
         Group g = manager.create(args[1], player.getUniqueId());
         if (g == null) { send(player, TextMode.Err, messages.get("Create.InvalidName")); return; }
         send(player, TextMode.Success, messages.format("Create.Success", g.getName()));
@@ -157,6 +164,8 @@ public class GroupCommand implements CommandExecutor, TabCompleter {
             if (exclude) {
                 if (child.equalsIgnoreCase(g.getName())) {
                     send(player, TextMode.Err, messages.get("Exclude.Group.SameGroup"));
+                } else if (manager.get(player.getUniqueId(), child) == null) {
+                    send(player, TextMode.Err, messages.format("Exclude.Group.NotExists", child));
                 } else if (manager.excludeGroup(g, child)) {
                     send(player, TextMode.Success, messages.format("Exclude.Group.Success", child, g.getName()));
                 } else {
@@ -314,11 +323,9 @@ public class GroupCommand implements CommandExecutor, TabCompleter {
     private void send(Player player, ChatColor color, String message) { player.sendMessage(color + message); }
 
     private UUID resolvePlayer(String name) {
-        Player online = Bukkit.getPlayerExact(name);
-        if (online != null) return online.getUniqueId();
-        @SuppressWarnings("deprecation")
-		OfflinePlayer offline = Bukkit.getOfflinePlayer(name);
-        return offline.hasPlayedBefore() ? offline.getUniqueId() : null;
+        // Кэш имён GP: Bukkit.getOfflinePlayer(name) для незнакомого ника блокирует основной поток запросом к Mojang
+        OfflinePlayer p = GriefPrevention.instance.resolvePlayerByName(name);
+        return p != null ? p.getUniqueId() : null;
     }
 
     private String displayName(UUID uuid) {
