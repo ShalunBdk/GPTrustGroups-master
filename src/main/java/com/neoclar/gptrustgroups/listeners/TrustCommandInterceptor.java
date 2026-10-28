@@ -90,8 +90,7 @@ public class TrustCommandInterceptor implements Listener {
 
         // Менять доверие может только владелец или менеджер привата — та же проверка, что в /trust и /untrust GP
         if (claim.checkPermission(player, ClaimPermission.Manage, null) != null) {
-            GriefPrevention.sendMessage(player, TextMode.Err,
-                    me.ryanhamshire.GriefPrevention.Messages.NoPermissionTrust, claim.getOwnerName());
+            send(player, TextMode.Err, messages.format("Trust.NoPermission", claim.getOwnerName()));
             return;
         }
 
@@ -100,8 +99,7 @@ public class TrustCommandInterceptor implements Listener {
         if (isUntrust) {
             // Снять группу-менеджера может только владелец (как ManagersDontUntrustManagers в GP)
             if (getList(claim, 3).contains(groupId) && claim.checkPermission(player, ClaimPermission.Edit, null) != null) {
-                GriefPrevention.sendMessage(player, TextMode.Err,
-                        me.ryanhamshire.GriefPrevention.Messages.ManagersDontUntrustManagers, claim.getOwnerName());
+                send(player, TextMode.Err, messages.get("Trust.ManagersOwnerOnly"));
                 return;
             }
             boolean removed = false;
